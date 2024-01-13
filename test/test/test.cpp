@@ -438,6 +438,170 @@ void columnSortMenu() {
     cout << "10. Category\n";
 }
 
+//Merge sorting algorithm
+// Merge function for array
+void mergeArrays(NutrientInfo* arr, int left, int middle, int right) {
+    int n1 = middle - left + 1;
+    int n2 = right - middle;
+
+    // Create temporary arrays
+    NutrientInfo* leftArr = new NutrientInfo[n1];
+    NutrientInfo* rightArr = new NutrientInfo[n2];
+
+    // Copy data to temporary arrays leftArr[] and rightArr[]
+    for (int i = 0; i < n1; i++)
+        leftArr[i] = arr[left + i];
+    for (int j = 0; j < n2; j++)
+        rightArr[j] = arr[middle + 1 + j];
+
+    // Merge the temporary arrays back into arr[left..right]
+    int i = 0; // Initial index of left subarray
+    int j = 0; // Initial index of right subarray
+    int k = left; // Initial index of merged subarray
+
+    while (i < n1 && j < n2) {
+        if (leftArr[i].calories <= rightArr[j].calories) {
+            arr[k] = leftArr[i];
+            i++;
+        }
+        else {
+            arr[k] = rightArr[j];
+            j++;
+        }
+        k++;
+    }
+
+    // Copy the remaining elements of leftArr[], if there are any
+    while (i < n1) {
+        arr[k] = leftArr[i];
+        i++;
+        k++;
+    }
+
+    // Copy the remaining elements of rightArr[], if there are any
+    while (j < n2) {
+        arr[k] = rightArr[j];
+        j++;
+        k++;
+    }
+
+    // Free the allocated memory
+    delete[] leftArr;
+    delete[] rightArr;
+}
+
+// Merge sort function for array
+void mergeSortArray(NutrientInfo* arr, int left, int right) {
+    if (left < right) {
+        // Same as (left + right) / 2, but avoids overflow for large left and right
+        int middle = left + (right - left) / 2;
+
+        // Sort first and second halves
+        mergeSortArray(arr, left, middle);
+        mergeSortArray(arr, middle + 1, right);
+
+        // Merge the sorted halves
+        mergeArrays(arr, left, middle, right);
+    }
+}
+
+// Merge function for linked list
+Node* mergeLists(Node* left, Node* right) {
+    Node* result = nullptr;
+
+    if (left == nullptr)
+        return right;
+    if (right == nullptr)
+        return left;
+
+    // Compare values and merge
+    if (left->data.calories <= right->data.calories) {
+        result = left;
+        result->next = mergeLists(left->next, right);
+    }
+    else {
+        result = right;
+        result->next = mergeLists(left, right->next);
+    }
+
+    return result;
+}
+
+// Merge sort function for linked list
+void mergeSortLinkedList(Node*& head) {
+    if (head == nullptr || head->next == nullptr)
+        return;
+
+    // Find the middle of the list
+    Node* middle = nullptr;
+    Node* fast = head;
+    Node* slow = head;
+
+    while (fast != nullptr && fast->next != nullptr) {
+        middle = slow;
+        slow = slow->next;
+        fast = fast->next->next;
+    }
+
+    // Split the list into two halves
+    Node* left = head;
+    Node* right = middle->next;
+    middle->next = nullptr;
+
+    // Recursively sort the two halves
+    mergeSortLinkedList(left);
+    mergeSortLinkedList(right);
+
+    // Merge the sorted halves
+    head = mergeLists(left, right);
+}
+
+// Bubble sort function for array
+void bubbleSortArray(NutrientInfo* data, int dataSize) {
+    for (int i = 0; i < dataSize - 1; ++i) {
+        for (int j = 0; j < dataSize - i - 1; ++j) {
+            if (data[j].calories > data[j + 1].calories) {
+                // Swap data[j] and data[j + 1]
+                NutrientInfo temp = data[j];
+                data[j] = data[j + 1];
+                data[j + 1] = temp;
+            }
+        }
+    }
+}
+
+// Bubble sort function for linked list
+void bubbleSortLinkedList(Node*& head) {
+    if (head == nullptr || head->next == nullptr) {
+        // Empty or single-node list is already sorted
+        return;
+    }
+
+    bool swapped;
+    Node* current;
+    Node* lastSorted = nullptr;
+
+    do {
+        swapped = false;
+        current = head;
+
+        while (current->next != lastSorted) {
+            if (current->data.calories > current->next->data.calories) {
+                // Swap data of adjacent nodes
+                NutrientInfo temp = current->data;
+                current->data = current->next->data;
+                current->next->data = temp;
+
+                swapped = true;
+            }
+            current = current->next;
+        }
+
+        // Mark the last swapped node as the new lastSorted
+        lastSorted = current;
+    } while (swapped);
+}
+
 int main() {
 
     int menuChoice, sortChoice, columnChoice;
@@ -475,8 +639,18 @@ int main() {
 
             if (sortChoice == 1) {
                 radixSortForArray(data, dataSize); // Modify this function to sort NutrientInfo array
+                cout << "Radix Sorting Algorithm" << endl;
             }
 
+            else if (sortChoice == 2) {
+                mergeSortArray(data, 0, dataSize - 1);  // Modify this function to sort NutrientInfo array
+                cout << "Merge Sorting Algorithm" << endl;
+            }
+
+            else if (sortChoice == 3) {
+                bubbleSortArray(data, dataSize); // Add this line for Bubble Sort
+                cout << "Bubble Sorting Algorithm" << endl;
+            }
             auto end = chrono::high_resolution_clock::now();
             chrono::duration<double, milli> elapsed = end - start;
 
@@ -491,6 +665,17 @@ int main() {
 
             if (sortChoice == 1 && (columnChoice == 1 || columnChoice == 2 || columnChoice == 10)) {
                 sortLinkedListByString(head, columnChoice);
+                cout << "Radix Sorting Algorithm" << endl;
+            }
+
+            else if (sortChoice == 2) {
+                mergeSortLinkedList(head);
+                cout << "Merge Sorting Algorithm" << endl;
+            }
+
+            else if (sortChoice == 3) {
+                bubbleSortLinkedList(head); // Add this line for Bubble Sort
+                cout << "Bubble Sorting Algorithm" << endl;
             }
             else {
                 int dataSize = getListSize(head);
@@ -504,7 +689,7 @@ int main() {
             auto end = chrono::high_resolution_clock::now();
             chrono::duration<double, milli> elapsed = end - start;
 
-            printLinkedList(head);
+            printLinkedList(head);            
             cout << "Sorting time: " << elapsed.count() << " ms" << endl;
         }
 
