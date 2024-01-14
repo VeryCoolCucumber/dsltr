@@ -3,7 +3,8 @@
 #include <sstream>
 #include <vector>
 #include <algorithm>
-#include <chrono>    
+#include <chrono>  
+
 
 using namespace std;
 using namespace chrono;
@@ -27,6 +28,7 @@ struct NutrientInfo
 struct Node {
     NutrientInfo data;
     Node* next;
+    
 };
 
 struct ScaledNode {
@@ -45,6 +47,7 @@ void addNode(Node*& head, const NutrientInfo& info) {
             current = current->next;
         }
         current->next = newNode;
+        
     }
 }
 
@@ -222,7 +225,7 @@ void readCsvToLinkedList(const string& filename, Node*& head) {
 }
 
 void countSortString(Node*& head, int exp, int maxLength, int column) {
-    vector<Node*> output;
+    vector<Node*> output(getListSize(head));
     Node* current = head;
     int count[256] = { 0 };  // Extended ASCII
 
@@ -316,7 +319,10 @@ void printLinkedList(const Node* head) {
         cout << endl;
         current = current->next;
     }
+    
+        
 }
+
 
 
 // ARRAY
@@ -409,6 +415,7 @@ void radixSortForArray(NutrientInfo* data, int n) {
 
 
 void printArray(const NutrientInfo* data, int dataSize) {
+
     for (int i = 0; i < dataSize; ++i) {
         cout << "Food: " << data[i].food << endl;
         cout << "Measure: " << data[i].measure << endl;
@@ -423,6 +430,7 @@ void printArray(const NutrientInfo* data, int dataSize) {
         cout << endl;
     }
 }
+
 
 void columnSortMenu() {
     cout << "Select a column to sort by: " << endl;
@@ -505,32 +513,11 @@ void mergeSortArray(NutrientInfo* arr, int left, int right) {
     }
 }
 
-// Merge function for linked list
-Node* mergeLists(Node* left, Node* right) {
-    Node* result = nullptr;
-
-    if (left == nullptr)
-        return right;
-    if (right == nullptr)
-        return left;
-
-    // Compare values and merge
-    if (left->data.calories <= right->data.calories) {
-        result = left;
-        result->next = mergeLists(left->next, right);
-    }
-    else {
-        result = right;
-        result->next = mergeLists(left, right->next);
-    }
-
-    return result;
-}
 
 // Merge sort function for linked list
-void mergeSortLinkedList(Node*& head) {
+Node* mergeSortLinkedList(Node* head, int sortColumn) {
     if (head == nullptr || head->next == nullptr)
-        return;
+        return head;
 
     // Find the middle of the list
     Node* middle = nullptr;
@@ -549,18 +536,98 @@ void mergeSortLinkedList(Node*& head) {
     middle->next = nullptr;
 
     // Recursively sort the two halves
-    mergeSortLinkedList(left);
-    mergeSortLinkedList(right);
+    left = mergeSortLinkedList(left, sortColumn);
+    right = mergeSortLinkedList(right, sortColumn);
 
     // Merge the sorted halves
-    head = mergeLists(left, right);
+    return mergeListsByColumn(left, right, sortColumn);
+}
+
+// Merge function for linked list based on chosen column
+Node* mergeListsByColumn(Node* left, Node* right, int sortColumn) {
+    Node* result = nullptr;
+
+    if (left == nullptr)
+        return right;
+    if (right == nullptr)
+        return left;
+
+    // Compare values and merge
+    if (compareNodes(left, right, sortColumn)) {
+        result = left;
+        result->next = mergeListsByColumn(left->next, right, sortColumn);
+    }
+    else {
+        result = right;
+        result->next = mergeListsByColumn(left, right->next, sortColumn);
+    }
+
+    return result;
+}
+
+// Function to compare nodes based on the chosen column
+bool compareNodes(Node* left, Node* right, int sortColumn) {
+    double value1, value2;
+
+    switch (sortColumn) {
+    case 1: // Food
+        value1 = left->data.food.compare(right->data.food);
+        value2 = 0.0;  // Dummy value, as it won't be used
+        break;
+    case 2: // Measure
+        value1 = left->data.measure.compare(right->data.measure);
+        value2 = 0.0;
+        break;
+    case 3: // Grams
+        value1 = left->data.grams;
+        value2 = right->data.grams;
+        break;
+    case 4: // Calories
+        value1 = left->data.calories;
+        value2 = right->data.calories;
+        break;
+        // Add cases for other columns as needed
+    default:
+        value1 = 0.0;
+        value2 = 0.0;
+        break;
+    }
+
+    return value1 <= value2;
 }
 
 // Bubble sort function for array
-void bubbleSortArray(NutrientInfo* data, int dataSize) {
+void bubbleSortArrayByColumn(NutrientInfo* data, int dataSize, int sortColumn) {
     for (int i = 0; i < dataSize - 1; ++i) {
         for (int j = 0; j < dataSize - i - 1; ++j) {
-            if (data[j].calories > data[j + 1].calories) {
+            // Compare elements based on the chosen column
+            double value1, value2;
+
+            switch (sortColumn) {
+            case 1: // Food
+                value1 = data[j].food.compare(data[j + 1].food);
+                value2 = 0.0;  // Dummy value, as it won't be used
+                break;
+            case 2: // Measure
+                value1 = data[j].measure.compare(data[j + 1].measure);
+                value2 = 0.0;
+                break;
+            case 3: // Grams
+                value1 = data[j].grams;
+                value2 = data[j + 1].grams;
+                break;
+            case 4: // Calories
+                value1 = data[j].calories;
+                value2 = data[j + 1].calories;
+                break;
+                // Add cases for other columns as needed
+            default:
+                value1 = 0.0;
+                value2 = 0.0;
+                break;
+            }
+
+            if (value1 > value2) {
                 // Swap data[j] and data[j + 1]
                 NutrientInfo temp = data[j];
                 data[j] = data[j + 1];
@@ -570,8 +637,9 @@ void bubbleSortArray(NutrientInfo* data, int dataSize) {
     }
 }
 
+
 // Bubble sort function for linked list
-void bubbleSortLinkedList(Node*& head) {
+void bubbleSortLinkedList(Node*& head, int sortColumn) {
     if (head == nullptr || head->next == nullptr) {
         // Empty or single-node list is already sorted
         return;
@@ -586,7 +654,34 @@ void bubbleSortLinkedList(Node*& head) {
         current = head;
 
         while (current->next != lastSorted) {
-            if (current->data.calories > current->next->data.calories) {
+            // Compare elements based on the chosen column
+            double value1, value2;
+
+            switch (sortColumn) {
+            case 1: // Food
+                value1 = current->data.food.compare(current->next->data.food);
+                value2 = 0.0;  // Dummy value, as it won't be used
+                break;
+            case 2: // Measure
+                value1 = current->data.measure.compare(current->next->data.measure);
+                value2 = 0.0;
+                break;
+            case 3: // Grams
+                value1 = current->data.grams;
+                value2 = current->next->data.grams;
+                break;
+            case 4: // Calories
+                value1 = current->data.calories;
+                value2 = current->next->data.calories;
+                break;
+                // Add cases for other columns as needed
+            default:
+                value1 = 0.0;
+                value2 = 0.0;
+                break;
+            }
+
+            if (value1 > value2) {
                 // Swap data of adjacent nodes
                 NutrientInfo temp = current->data;
                 current->data = current->next->data;
@@ -602,12 +697,13 @@ void bubbleSortLinkedList(Node*& head) {
     } while (swapped);
 }
 
+
 int main() {
 
     int menuChoice, sortChoice, columnChoice;
-    string filename = "C:/Users/khoow/OneDrive - Asia Pacific University/DSTR/Nutrients_Info 1.csv";
+    string filename = "C:/Users/Asus/OneDrive - Asia Pacific University/Documents/Degree Year 2/Sem 2/Data Structure(DSTR)/Case Study #1 - 20231220/Nutrients_Info 1.csv";
 
-    while (true) {
+    while (true) {        
         cout << "Choose data storage method:\n1. Array\n2. Linked List\n3. Exit\n";
         cin >> menuChoice;
 
@@ -637,7 +733,8 @@ int main() {
 
             auto start = chrono::high_resolution_clock::now();
 
-            if (sortChoice == 1) {
+
+            if (sortChoice == 1) {                
                 radixSortForArray(data, dataSize); // Modify this function to sort NutrientInfo array
                 cout << "Radix Sorting Algorithm" << endl;
             }
@@ -648,13 +745,14 @@ int main() {
             }
 
             else if (sortChoice == 3) {
-                bubbleSortArray(data, dataSize); // Add this line for Bubble Sort
+                bubbleSortArrayByColumn(data, dataSize, columnChoice); // Add this line for Bubble Sort
                 cout << "Bubble Sorting Algorithm" << endl;
             }
             auto end = chrono::high_resolution_clock::now();
             chrono::duration<double, milli> elapsed = end - start;
 
             printArray(data, dataSize);
+            
             cout << "Sorting time: " << elapsed.count() << " ms" << endl;
         }
         else if (menuChoice == 2) {
@@ -664,17 +762,17 @@ int main() {
             auto start = chrono::high_resolution_clock::now();
 
             if (sortChoice == 1 && (columnChoice == 1 || columnChoice == 2 || columnChoice == 10)) {
-                sortLinkedListByString(head, columnChoice);
+                sortLinkedListByString(head, columnChoice);  // Function to sort linked list of strings
                 cout << "Radix Sorting Algorithm" << endl;
             }
 
             else if (sortChoice == 2) {
-                mergeSortLinkedList(head);
+                head = mergeSortLinkedList(head, columnChoice);
                 cout << "Merge Sorting Algorithm" << endl;
             }
 
             else if (sortChoice == 3) {
-                bubbleSortLinkedList(head); // Add this line for Bubble Sort
+                bubbleSortLinkedList(head, columnChoice); // Add this line for Bubble Sort
                 cout << "Bubble Sorting Algorithm" << endl;
             }
             else {
@@ -689,19 +787,20 @@ int main() {
             auto end = chrono::high_resolution_clock::now();
             chrono::duration<double, milli> elapsed = end - start;
 
-            printLinkedList(head);            
+            printLinkedList(head);
             cout << "Sorting time: " << elapsed.count() << " ms" << endl;
         }
-
+        
         // Implement a way to pause and display results before returning to the menu
         cout << "Press Enter to return to the menu...";
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
         cin.get();
+                
     }
 
     // Clean up resources if necessary
 
     return 0;
-
+    
 }
 
