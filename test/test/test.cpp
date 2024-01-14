@@ -1,17 +1,19 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <cmath>
 #include <vector>
 #include <algorithm>
-#include <chrono>  
-
+#include <string>
+#include <chrono>
+#include <functional>
 
 using namespace std;
 using namespace chrono;
 
 const int MAX_SIZE = 1000;
 
-struct NutrientInfo
+struct NutrientsInfo
 {
     string food;
     string measure;
@@ -26,18 +28,110 @@ struct NutrientInfo
 };
 
 struct Node {
-    NutrientInfo data;
+    NutrientsInfo data;
     Node* next;
-    
+
+    Node(const NutrientsInfo& nutrient) : data(nutrient), next(nullptr) {}
 };
+
+struct NutrientsLinkedList {
+    Node* head;
+
+    NutrientsLinkedList() : head(nullptr) {}
+
+    ~NutrientsLinkedList() {
+        Node* current = head;
+        while (current != nullptr) {
+            Node* next = current->next;
+            delete current;
+            current = next;
+        }
+    }
+
+    void push_back(const NutrientsInfo& nutrient) {
+        Node* newNode = new Node(nutrient);
+        if (head == nullptr) {
+            head = newNode;
+        }
+        else {
+            Node* current = head;
+            while (current->next != nullptr) {
+                current = current->next;
+            }
+            current->next = newNode;
+        }
+    }
+
+    void printList() const {
+        Node* current = head;
+        while (current != nullptr) {
+            const NutrientsInfo& nutrient = current->data;
+            cout << "Food: " << nutrient.food << endl;
+            cout << "Measure: " << nutrient.measure << endl;
+            cout << "Grams: " << nutrient.grams << endl;
+            cout << "Calories: " << nutrient.calories << endl;
+            cout << "Protein: " << nutrient.protein << endl;
+            cout << "Fat: " << nutrient.fat << endl;
+            cout << "SatFat: " << nutrient.satFat << endl;
+            cout << "Fiber: " << nutrient.fiber << endl;
+            cout << "Carbs: " << nutrient.carbs << endl;
+            cout << "Category: " << nutrient.category << endl;
+            cout << endl;
+
+            current = current->next;
+        }
+    }
+
+};
+
+struct NutrientsArray
+{
+    NutrientsInfo* nutrients;
+    int size;
+    int capacity;
+
+    NutrientsArray() : nutrients(nullptr), size(0), capacity(0) {}
+
+    ~NutrientsArray()
+    {
+        delete[] nutrients;
+    }
+
+    void push_back(const NutrientsInfo& nutrient)
+    {
+        if (size == capacity)
+        {
+            // Double the capacity if needed
+            capacity = (capacity == 0) ? 1 : capacity * 2;
+            NutrientsInfo* newNutrients = new NutrientsInfo[capacity];
+
+            // Copy existing data
+            for (int i = 0; i < size; ++i)
+            {
+                newNutrients[i] = nutrients[i];
+            }
+
+            // Release old memory
+            delete[] nutrients;
+
+            // Update pointer to the new array
+            nutrients = newNutrients;
+        }
+
+        // Add the new nutrient
+        nutrients[size++] = nutrient;
+    }
+};
+
+typedef bool (*ComparisonFunc)(const NutrientsInfo&, const NutrientsInfo&);
 
 struct ScaledNode {
     int scaledValue;
     Node* nodePtr;
 };
 
-void addNode(Node*& head, const NutrientInfo& info) {
-    Node* newNode = new Node{ info, nullptr };
+void addNode(Node*& head, const NutrientsInfo& info) {
+    Node* newNode = new Node{ info };
     if (head == nullptr) {
         head = newNode;
     }
@@ -47,7 +141,7 @@ void addNode(Node*& head, const NutrientInfo& info) {
             current = current->next;
         }
         current->next = newNode;
-        
+
     }
 }
 
@@ -79,20 +173,6 @@ double stringToDouble(const string& str) {
     catch (const exception& e) {
         return 0.0;
     }
-}
-
-int getMaxStringLength(Node* head, int column) {
-    int maxLength = 0;
-    Node* current = head;
-    while (current != nullptr) {
-        int currentLength = 0;
-        if (column == 1) currentLength = current->data.food.length();
-        else if (column == 2) currentLength = current->data.measure.length();
-        else if (column == 10) currentLength = current->data.category.length();
-        maxLength = max(maxLength, currentLength);
-        current = current->next;
-    }
-    return maxLength;
 }
 
 ScaledNode* extractData(Node* head, int dataSize, int scale, int sortColumn) {
@@ -130,6 +210,34 @@ ScaledNode* extractData(Node* head, int dataSize, int scale, int sortColumn) {
     return data;
 }
 
+int getListSize(Node* head) {
+    int count = 0;
+    Node* current = head;
+    while (current != nullptr) {
+        count++;
+        current = current->next;
+    }
+    return count;
+}
+
+void printLinkedList(const Node* head) {
+    const Node* current = head;
+    while (current != nullptr) {
+        cout << "Food: " << current->data.food << endl;
+        cout << "Measure: " << current->data.measure << endl;
+        cout << "Grams: " << current->data.grams << endl;
+        cout << "Calories: " << current->data.calories << endl;
+        cout << "Protein: " << current->data.protein << endl;
+        cout << "Fat: " << current->data.fat << endl;
+        cout << "SatFat: " << current->data.satFat << endl;
+        cout << "Fiber: " << current->data.fiber << endl;
+        cout << "Carbs: " << current->data.carbs << endl;
+        cout << "Category: " << current->data.category << endl;
+        cout << endl;
+        current = current->next;
+    }
+}
+
 void reconstructList(Node*& head, ScaledNode* data, int dataSize) {
     if (dataSize == 0) return;
     head = data[0].nodePtr;
@@ -141,50 +249,6 @@ void reconstructList(Node*& head, ScaledNode* data, int dataSize) {
     current->next = nullptr;
 }
 
-
-void sortLinkedListByString(Node*& head, int sortColumn) {
-    vector<NutrientInfo> data;
-    Node* current = head;
-    while (current != nullptr) {
-        data.push_back(current->data);
-        current = current->next;
-    }
-
-    if (sortColumn == 1) {  // Assuming 1 is for sorting by 'food'
-        sort(data.begin(), data.end(), [](const NutrientInfo& a, const NutrientInfo& b) {
-            return a.food < b.food;
-            });
-    }
-    else if (sortColumn == 2) {
-        sort(data.begin(), data.end(), [](const NutrientInfo& a, const NutrientInfo& b) {
-            return a.measure < b.measure;
-            });
-    }
-    else if (sortColumn == 10) {
-        sort(data.begin(), data.end(), [](const NutrientInfo& a, const NutrientInfo& b) {
-            return a.category < b.category;
-            });
-    }
-    // Add similar conditions for other string columns
-
-    head = nullptr;
-    for (const auto& item : data) {
-        addNode(head, item);
-    }
-}
-
-
-int getListSize(Node* head) {
-    int count = 0;
-    Node* current = head;
-    while (current != nullptr) {
-        count++;
-        current = current->next;
-    }
-    return count;
-}
-
-
 void readCsvToLinkedList(const string& filename, Node*& head) {
     ifstream file(filename);
     string line, temp;
@@ -194,7 +258,7 @@ void readCsvToLinkedList(const string& filename, Node*& head) {
 
     while (getline(file, line)) {
         istringstream s(line);
-        NutrientInfo info;
+        NutrientsInfo info;
         getline(s, info.food, ',');
         getline(s, info.measure, ',');
 
@@ -224,110 +288,7 @@ void readCsvToLinkedList(const string& filename, Node*& head) {
     }
 }
 
-void countSortString(Node*& head, int exp, int maxLength, int column) {
-    vector<Node*> output(getListSize(head));
-    Node* current = head;
-    int count[256] = { 0 };  // Extended ASCII
-
-    while (current != nullptr) {
-        string str = (column == 1) ? current->data.food :
-            (column == 2) ? current->data.measure :
-            current->data.category;
-        int index = (exp < str.length()) ? (str[str.length() - 1 - exp]) : 0;
-        count[index]++;
-        current = current->next;
-    }
-
-    for (int i = 1; i < 256; i++)
-        count[i] += count[i - 1];
-
-    current = head;
-    while (current != nullptr) {
-        string str = (column == 1) ? current->data.food :
-            (column == 2) ? current->data.measure :
-            current->data.category;
-        int index = (exp < str.length()) ? (str[str.length() - 1 - exp]) : 0;
-        output[count[index] - 1] = current;
-        count[index]--;
-        current = current->next;
-    }
-
-    head = output[0];
-    current = head;
-    for (size_t i = 1; i < output.size(); i++) {
-        current->next = output[i];
-        current = current->next;
-    }
-    current->next = nullptr;
-}
-
-void radixSortStrings(Node*& head, int column) {
-    int maxLength = getMaxStringLength(head, column);
-    for (int exp = 0; exp < maxLength; exp++) {
-        countSortString(head, exp, maxLength, column);
-    }
-}
-
-void countSortCalorieNode(ScaledNode* data, int n, int exp) {
-    vector<ScaledNode> output(n);
-    int i, count[10] = { 0 };
-
-    // Count occurrences
-    for (i = 0; i < n; i++)
-        count[(data[i].scaledValue / exp) % 10]++;
-
-    // Change count[i] to actual position
-    for (i = 1; i < 10; i++)
-        count[i] += count[i - 1];
-
-    // Build the output array
-    for (i = n - 1; i >= 0; i--) {
-        output[count[(data[i].scaledValue / exp) % 10] - 1] = data[i];
-        count[(data[i].scaledValue / exp) % 10]--;
-    }
-
-    // Copy the output array to data[]
-    for (i = 0; i < n; i++)
-        data[i] = output[i];
-}
-
-void radixSortForLinkedList(ScaledNode* data, int n) {
-    // Find the maximum number
-    int m = data[0].scaledValue;
-    for (int i = 1; i < n; i++)
-        if (data[i].scaledValue > m)
-            m = data[i].scaledValue;
-
-    // Perform counting sort for every digit
-    for (int exp = 1; m / exp > 0; exp *= 10)
-        countSortCalorieNode(data, n, exp);
-}
-
-void printLinkedList(const Node* head) {
-    const Node* current = head;
-    while (current != nullptr) {
-        cout << "Food: " << current->data.food << endl;
-        cout << "Measure: " << current->data.measure << endl;
-        cout << "Grams: " << current->data.grams << endl;
-        cout << "Calories: " << current->data.calories << endl;
-        cout << "Protein: " << current->data.protein << endl;
-        cout << "Fat: " << current->data.fat << endl;
-        cout << "SatFat: " << current->data.satFat << endl;
-        cout << "Fiber: " << current->data.fiber << endl;
-        cout << "Carbs: " << current->data.carbs << endl;
-        cout << "Category: " << current->data.category << endl;
-        cout << endl;
-        current = current->next;
-    }
-    
-        
-}
-
-
-
-// ARRAY
-
-void readCsvToArray(const string& filename, NutrientInfo* data, int& dataSize) {
+void readCsvToArray(const string& filename, NutrientsInfo* data, int& dataSize) {
     ifstream file(filename);
     string line;
 
@@ -336,7 +297,7 @@ void readCsvToArray(const string& filename, NutrientInfo* data, int& dataSize) {
 
     while (getline(file, line) && dataSize < MAX_SIZE) {
         istringstream s(line);
-        NutrientInfo info;
+        NutrientsInfo info;
         string temp;
 
         getline(s, info.food, ',');
@@ -369,24 +330,226 @@ void readCsvToArray(const string& filename, NutrientInfo* data, int& dataSize) {
     }
 }
 
-
-
-int getMaxCalories(const NutrientInfo* data, int n) {
-    double maxCalories = data[0].calories;
-    for (int i = 1; i < n; i++) {
-        if (data[i].calories > maxCalories) {
-            maxCalories = data[i].calories;
-        }
-    }
-    return static_cast<int>(maxCalories);
+//DATA CLEANING
+bool isNumeric(const string& str)
+{
+    string temp = str;
+    // Remove commas from numeric string
+    temp.erase(remove(temp.begin(), temp.end(), ','), temp.end());
+    istringstream iss(temp);
+    double d;
+    return iss >> d >> ws && iss.eof();
 }
 
-void countSortForNutrientInfo(NutrientInfo* data, int n, int exp) {
-    vector<NutrientInfo> output(n);
+void trimWhitespace(string& str)
+{
+    str.erase(0, str.find_first_not_of(" \t\r\n"));
+    str.erase(str.find_last_not_of(" \t\r\n") + 1);
+}
+
+void removeQuotes(string& str) {
+    if (!str.empty() && str.front() == '\"') {
+        str.erase(0, 1);
+    }
+    if (!str.empty() && str.back() == '\"') {
+        str.erase(str.size() - 1, 1);
+    }
+}
+
+void removeCommaFromNumbers(string& str) {
+    str.erase(remove(str.begin(), str.end(), ','), str.end());
+}
+
+double cleanAndConvertToDouble(const string& str)
+{
+    string cleanedStr = str;
+    removeCommaFromNumbers(cleanedStr);
+    try {
+        return stod(cleanedStr);
+    }
+    catch (const exception&) {
+        return 0.0;
+    }
+
+    if (str.empty() || str == "t" || str == "a")
+    {
+        return 0.0; // Handle empty or special cases
+    }
+    else if (str.find('/') != string::npos || isalpha(str[0])) // Check for '/' or an alphabetical character
+    {
+        return -1.0; // Return a default value for dates or non-numeric values
+    }
+    else
+    {
+        // Remove commas and convert to double
+        string cleanedStr = str;
+        cleanedStr.erase(remove(cleanedStr.begin(), cleanedStr.end(), ','), cleanedStr.end());
+        return stod(cleanedStr);
+    }
+}
+
+void split(const string& str, char delim, string out[], int maxFields) {
+    stringstream ss(str);
+    string token;
+    int fieldCount = 0;
+
+    while (getline(ss, token, delim) && fieldCount < maxFields) {
+        out[fieldCount++] = token;
+    }
+}
+
+void addNutrientToArray(NutrientsInfo* array, NutrientsInfo& nutrient, int& size, int capacity) {
+    if (size < capacity) {
+        array[size++] = nutrient;
+    }
+    else {
+        cerr << "Array is full." << endl;
+    }
+}
+
+
+void preprocessData(NutrientsInfo* data, int n) {
+    for (int i = 0; i < n; i++) {
+        if (data[i].protein < 0) {
+            data[i].protein = 0;  // Set negative protein values to 0
+        }
+    }
+}
+
+void replaceCategory(NutrientsInfo arr[], int n) {
+    for (int i = 0; i < n; i++) {
+        if (arr[i].category == "t") {  // Check if the category is 't'
+            arr[i].category = "undefined";  // Replace with "undefined"
+        }
+    }
+}
+
+void replaceCharacterInCategory(NutrientsLinkedList& list) {
+    Node* current = list.head;
+    while (current != nullptr) {
+        // Check if the category is a single character 't'
+        if (current->data.category.length() == 1 && current->data.category[0] == 't') {
+            current->data.category = "undefined";
+        }
+        current = current->next;
+    }
+}
+
+void replaceNegativeProteinWithZero(NutrientsLinkedList& list) {
+    Node* current = list.head;
+    while (current != nullptr) {
+        // Check if the protein value is negative
+        if (current->data.protein < 0) {
+            current->data.protein = 0;
+        }
+        current = current->next;
+    }
+}
+//DATA CLEANING
+
+
+
+
+//SORT ARRAY
+
+double getCalories(const NutrientsInfo& item) {
+    return item.calories;
+}
+
+double getGrams(const NutrientsInfo& item) {
+    return item.grams;
+}
+
+double getProtein(const NutrientsInfo& item) {
+    return item.protein;
+}
+
+double getFat(const NutrientsInfo& item) {
+    return item.fat;
+}
+
+double getSatFat(const NutrientsInfo& item) {
+    return item.satFat;
+}
+
+double getFiber(const NutrientsInfo& item) {
+    return item.fiber;
+}
+
+double getCarbs(const NutrientsInfo& item) {
+    return item.carbs;
+}
+
+double getMaxValue(const NutrientsInfo* data, int n, function<double(const NutrientsInfo&)> getValue) {
+    double maxValue = getValue(data[0]);
+    for (int i = 1; i < n; i++) {
+        double value = getValue(data[i]);
+        if (value > maxValue) {
+            maxValue = value;
+        }
+    }
+    return maxValue;
+}
+
+int getMaxStringLength(NutrientsInfo arr[], int n, string NutrientsInfo::* field) {
+    int maxLength = 0;
+    for (int i = 0; i < n; i++) {
+        maxLength = max(maxLength, static_cast<int>((arr[i].*field).length()));
+    }
+    return maxLength;
+}
+
+bool extractLeadingNumber(const std::string& str, double& number) {
+    std::istringstream iss(str);
+    iss >> number;
+
+    return !iss.fail() && !iss.eof();
+}
+
+void countSortString(NutrientsInfo arr[], int n, int exp, string NutrientsInfo::* field) {
+    vector<NutrientsInfo> output(n);
+    int count[256] = { 0 };  // Extended ASCII, including '\0'
+
+    // Count occurrence of each character at exp position
+    for (int i = 0; i < n; i++) {
+        int index = (arr[i].*field).length() - exp - 1;
+        char ch = index >= 0 ? (arr[i].*field)[index] : '\0';
+        count[static_cast<unsigned char>(ch)]++;
+    }
+
+    // Accumulate count array
+    for (int i = 1; i < 256; i++) {
+        count[i] += count[i - 1];
+    }
+
+    // Build output array
+    for (int i = n - 1; i >= 0; i--) {
+        int index = (arr[i].*field).length() - exp - 1;
+        char ch = index >= 0 ? (arr[i].*field)[index] : '\0';
+        output[count[static_cast<unsigned char>(ch)] - 1] = arr[i];
+        count[static_cast<unsigned char>(ch)]--;
+    }
+
+    // Copy the output array to arr
+    for (int i = 0; i < n; i++) {
+        arr[i] = output[i];
+    }
+}
+
+void radixSortString(NutrientsInfo arr[], int n, string NutrientsInfo::* field) {
+    int maxLength = getMaxStringLength(arr, n, field);
+
+    for (int exp = 0; exp < maxLength; exp++) {
+        countSortString(arr, n, exp, field);
+    }
+}
+
+void countSortNumbers(NutrientsInfo* data, int n, int exp, function<double(const NutrientsInfo&)> getFieldValue) {
+    vector<NutrientsInfo> output(n);
     int count[10] = { 0 };
 
     for (int i = 0; i < n; i++) {
-        int index = static_cast<int>(data[i].calories) / exp % 10;
+        int index = static_cast<int>(getFieldValue(data[i]) / exp) % 10;
         count[index]++;
     }
 
@@ -395,7 +558,7 @@ void countSortForNutrientInfo(NutrientInfo* data, int n, int exp) {
     }
 
     for (int i = n - 1; i >= 0; i--) {
-        int index = static_cast<int>(data[i].calories) / exp % 10;
+        int index = static_cast<int>(getFieldValue(data[i]) / exp) % 10;
         output[count[index] - 1] = data[i];
         count[index]--;
     }
@@ -405,56 +568,72 @@ void countSortForNutrientInfo(NutrientInfo* data, int n, int exp) {
     }
 }
 
-void radixSortForArray(NutrientInfo* data, int n) {
-    int m = getMaxCalories(data, n);
+void radixSortNumbers(NutrientsInfo* data, int n, function<double(const NutrientsInfo&)> getFieldValue) {
+    double m = getMaxValue(data, n, getFieldValue);
 
     for (int exp = 1; m / exp > 0; exp *= 10) {
-        countSortForNutrientInfo(data, n, exp);
+        countSortNumbers(data, n, exp, getFieldValue);
     }
 }
 
+void radixSortByMeasure(NutrientsInfo arr[], int n) {
+    vector<NutrientsInfo> withNumber, withoutNumber;
 
-void printArray(const NutrientInfo* data, int dataSize) {
+    for (int i = 0; i < n; i++) {
+        double num;
+        if (extractLeadingNumber(arr[i].measure, num)) {
+            withNumber.push_back(arr[i]);
+        }
+        else {
+            withoutNumber.push_back(arr[i]);
+        }
+    }
 
-    for (int i = 0; i < dataSize; ++i) {
-        cout << "Food: " << data[i].food << endl;
-        cout << "Measure: " << data[i].measure << endl;
-        cout << "Grams: " << data[i].grams << endl;
-        cout << "Calories: " << data[i].calories << endl;
-        cout << "Protein: " << data[i].protein << endl;
-        cout << "Fat: " << data[i].fat << endl;
-        cout << "Sat Fat : " << data[i].satFat << endl;
-        cout << "Fiber: " << data[i].fiber << endl;
-        cout << "Carbs: " << data[i].carbs << endl;
-        cout << "Category: " << data[i].category << endl;
-        cout << endl;
+    int sizeWithNumber = withNumber.size();
+    int sizeWithoutNumber = withoutNumber.size();
+
+
+    // Sort the 'withNumber' array numerically
+    radixSortNumbers(withNumber.data(), sizeWithNumber, [](const NutrientsInfo& item) {
+        double num;
+        extractLeadingNumber(item.measure, num);
+        return num;
+        });
+
+    // Sort the 'withoutNumber' array alphabetically
+
+    radixSortString(withoutNumber.data(), sizeWithoutNumber, &NutrientsInfo::measure);
+
+
+    // Merge the arrays
+    // ...
+
+    // Merge the arrays back into arr
+    int withIndex = 0, withoutIndex = 0, arrIndex = 0;
+    while (withIndex < sizeWithNumber && withoutIndex < sizeWithoutNumber) {
+        if (withNumber[withIndex].measure.compare(withoutNumber[withoutIndex].measure) < 0) {
+            arr[arrIndex++] = withNumber[withIndex++];
+        }
+        else {
+            arr[arrIndex++] = withoutNumber[withoutIndex++];
+        }
+    }
+    // Copy any remaining elements
+    while (withIndex < sizeWithNumber) {
+        arr[arrIndex++] = withNumber[withIndex++];
+    }
+    while (withoutIndex < sizeWithoutNumber) {
+        arr[arrIndex++] = withoutNumber[withoutIndex++];
     }
 }
 
-
-void columnSortMenu() {
-    cout << "Select a column to sort by: " << endl;
-    cout << "1. Food\n";
-    cout << "2. Measure\n";
-    cout << "3. Grams\n";
-    cout << "4. Calories\n";
-    cout << "5. Protein\n";
-    cout << "6. Fat\n";
-    cout << "7. Saturated Fat\n";
-    cout << "8. Fiber\n";
-    cout << "9. Carbs\n";
-    cout << "10. Category\n";
-}
-
-//Merge sorting algorithm
-// Merge function for array
-void mergeArrays(NutrientInfo* arr, int left, int middle, int right) {
+void mergeArrays(NutrientsInfo* arr, int left, int middle, int right) {
     int n1 = middle - left + 1;
     int n2 = right - middle;
 
     // Create temporary arrays
-    NutrientInfo* leftArr = new NutrientInfo[n1];
-    NutrientInfo* rightArr = new NutrientInfo[n2];
+    NutrientsInfo* leftArr = new NutrientsInfo[n1];
+    NutrientsInfo* rightArr = new NutrientsInfo[n2];
 
     // Copy data to temporary arrays leftArr[] and rightArr[]
     for (int i = 0; i < n1; i++)
@@ -499,7 +678,7 @@ void mergeArrays(NutrientInfo* arr, int left, int middle, int right) {
 }
 
 // Merge sort function for array
-void mergeSortArray(NutrientInfo* arr, int left, int right) {
+void mergeSortArray(NutrientsInfo* arr, int left, int right) {
     if (left < right) {
         // Same as (left + right) / 2, but avoids overflow for large left and right
         int middle = left + (right - left) / 2;
@@ -513,6 +692,7 @@ void mergeSortArray(NutrientInfo* arr, int left, int right) {
     }
 }
 
+Node* mergeListsByColumn(Node* left, Node* right, int sortColumn);
 
 // Merge sort function for linked list
 Node* mergeSortLinkedList(Node* head, int sortColumn) {
@@ -543,6 +723,8 @@ Node* mergeSortLinkedList(Node* head, int sortColumn) {
     return mergeListsByColumn(left, right, sortColumn);
 }
 
+bool compareNodes(Node* left, Node* right, int sortColumn);
+
 // Merge function for linked list based on chosen column
 Node* mergeListsByColumn(Node* left, Node* right, int sortColumn) {
     Node* result = nullptr;
@@ -565,7 +747,8 @@ Node* mergeListsByColumn(Node* left, Node* right, int sortColumn) {
     return result;
 }
 
-// Function to compare nodes based on the chosen column
+
+
 bool compareNodes(Node* left, Node* right, int sortColumn) {
     double value1, value2;
 
@@ -596,8 +779,7 @@ bool compareNodes(Node* left, Node* right, int sortColumn) {
     return value1 <= value2;
 }
 
-// Bubble sort function for array
-void bubbleSortArrayByColumn(NutrientInfo* data, int dataSize, int sortColumn) {
+void bubbleSortArrayByColumn(NutrientsInfo* data, int dataSize, int sortColumn) {
     for (int i = 0; i < dataSize - 1; ++i) {
         for (int j = 0; j < dataSize - i - 1; ++j) {
             // Compare elements based on the chosen column
@@ -629,7 +811,7 @@ void bubbleSortArrayByColumn(NutrientInfo* data, int dataSize, int sortColumn) {
 
             if (value1 > value2) {
                 // Swap data[j] and data[j + 1]
-                NutrientInfo temp = data[j];
+                NutrientsInfo temp = data[j];
                 data[j] = data[j + 1];
                 data[j + 1] = temp;
             }
@@ -637,8 +819,6 @@ void bubbleSortArrayByColumn(NutrientInfo* data, int dataSize, int sortColumn) {
     }
 }
 
-
-// Bubble sort function for linked list
 void bubbleSortLinkedList(Node*& head, int sortColumn) {
     if (head == nullptr || head->next == nullptr) {
         // Empty or single-node list is already sorted
@@ -683,7 +863,7 @@ void bubbleSortLinkedList(Node*& head, int sortColumn) {
 
             if (value1 > value2) {
                 // Swap data of adjacent nodes
-                NutrientInfo temp = current->data;
+                NutrientsInfo temp = current->data;
                 current->data = current->next->data;
                 current->next->data = temp;
 
@@ -698,12 +878,232 @@ void bubbleSortLinkedList(Node*& head, int sortColumn) {
 }
 
 
-int main() {
+//LINKED LIST
 
-    int menuChoice, sortChoice, columnChoice;
+int getMaxValueLinked(const NutrientsLinkedList& list, function<int(const NutrientsInfo&)> getFieldFunc) {
+    if (list.head == nullptr) return 0;
+
+    int maxValue = getFieldFunc(list.head->data);
+    Node* current = list.head->next;
+
+    while (current != nullptr) {
+        maxValue = max(maxValue, getFieldFunc(current->data));
+        current = current->next;
+    }
+
+    return maxValue;
+}
+
+int getDigit(int number, int exp) {
+    return (number / exp) % 10;
+}
+
+// Function to perform counting sort on the linked list for a specific digit
+void countingSortForRadixLinked(NutrientsLinkedList& list, int exp, function<int(const NutrientsInfo&)> getDigitFunc) {
+    Node* output[10] = { nullptr };  // Array of pointers for each digit
+    Node* last[10] = { nullptr };
+    Node* current = list.head;
+
+    // Counting occurrences of digits and creating new linked lists
+    while (current != nullptr) {
+        int index = getDigitFunc(current->data);
+        if (output[index] == nullptr) {
+            output[index] = current;
+        }
+        else {
+            last[index]->next = current;
+        }
+        last[index] = current;
+        current = current->next;
+    }
+
+    // Now combine the linked lists back into the original list
+    Node* newList = nullptr;
+    Node* lastNode = nullptr;
+    for (int i = 0; i < 10; i++) {
+        if (output[i] != nullptr) {
+            if (newList == nullptr) {
+                newList = output[i];
+            }
+            else {
+                lastNode->next = output[i];
+            }
+            lastNode = last[i];
+        }
+    }
+    if (lastNode != nullptr) {
+        lastNode->next = nullptr; // Ensure the last node points to nullptr
+    }
+    list.head = newList; // Set the head of the list to the new list
+}
+
+// Radix Sort function
+void radixSortLinkedList(NutrientsLinkedList& list, function<int(const NutrientsInfo&, int)> getDigitFunc, int maxDigit) {
+    for (int exp = 1; maxDigit / exp > 0; exp *= 10)
+        countingSortForRadixLinked(list, exp, [exp, &getDigitFunc](const NutrientsInfo& item) -> int {
+        return getDigitFunc(item, exp);
+            });
+}
+
+
+int getMaxStringLengthLinkedList(Node* head, function<string(const NutrientsInfo&)> getStringField) {
+    int maxLength = 0;
+    Node* current = head;
+    while (current != nullptr) {
+        maxLength = max(maxLength, static_cast<int>(getStringField(current->data).length()));
+        current = current->next;
+    }
+    return maxLength;
+}
+
+void countingSortForRadixLinkedStrings(NutrientsLinkedList& list, int exp, function<char(const NutrientsInfo&)> getCharFunc) {
+    // First, calculate the size of the linked list
+    int size = 0;
+    Node* node = list.head;
+    while (node != nullptr) {
+        size++;
+        node = node->next;
+    }
+
+    vector<NutrientsInfo> output(size); // Now use the calculated size
+    int count[256] = { 0 }; // ASCII characters
+
+    Node* current = list.head;
+    while (current != nullptr) {
+        char ch = getCharFunc(current->data);
+        count[static_cast<unsigned char>(ch)]++;
+        current = current->next;
+    }
+
+    for (int i = 1; i < 256; i++)
+        count[i] += count[i - 1];
+
+    current = list.head;
+    while (current != nullptr) {
+        char ch = getCharFunc(current->data);
+        output[count[static_cast<unsigned char>(ch)] - 1] = current->data;
+        count[static_cast<unsigned char>(ch)]--;
+        current = current->next;
+    }
+
+    current = list.head;
+    for (const auto& item : output) {
+        current->data = item;
+        current = current->next;
+    }
+}
+
+void radixSortLinkedListStrings(NutrientsLinkedList& list, function<string(const NutrientsInfo&)> getStringField) {
+    int maxLength = getMaxStringLengthLinkedList(list.head, getStringField);
+
+    for (int exp = maxLength - 1; exp >= 0; exp--) {
+        countingSortForRadixLinkedStrings(list, exp, [exp, &getStringField](const NutrientsInfo& item) -> char {
+            string str = getStringField(item);
+            if (exp < str.length()) {
+                return str[exp];
+            }
+            return '\0'; // For strings shorter than the current position
+            });
+    }
+}
+
+
+void columnSortMenu() {
+    cout << "Select a column to sort by: " << endl;
+    cout << "1. Food\n";
+    cout << "2. Measure\n";
+    cout << "3. Grams\n";
+    cout << "4. Calories\n";
+    cout << "5. Protein\n";
+    cout << "6. Fat\n";
+    cout << "7. Saturated Fat\n";
+    cout << "8. Fiber\n";
+    cout << "9. Carbs\n";
+    cout << "10. Category\n";
+}
+
+int main()
+{
     string filename = "C:/Users/Asus/OneDrive - Asia Pacific University/Documents/Degree Year 2/Sem 2/Data Structure(DSTR)/Case Study #1 - 20231220/Nutrients_Info 1.csv";
 
-    while (true) {        
+    const int maxSize = 1000;
+    int menuChoice, sortChoice, columnChoice, maxLength;
+    NutrientsLinkedList nutrientsList;
+    NutrientsInfo nutrientsArray[maxSize];
+    NutrientsInfo data[MAX_SIZE];
+    int dataSize = 0;
+    readCsvToArray(filename, data, dataSize);
+    int n = 0;
+    ifstream file("C:/Users/khoow/OneDrive - Asia Pacific University/DSTR/Nutrients_Info 1.csv");
+
+    if (!file.is_open())
+    {
+        cerr << "Error opening file: Nutrients_Info 1.csv" << endl;
+        return 1; // Return an error code
+    }
+
+    string line;
+    // Skip the header line if it exists
+    getline(file, line);
+
+    while (getline(file, line))
+    {
+        const int fields = 10;
+        string tokens[fields];
+        split(line, ',', tokens, fields);
+
+        if (tokens[0].empty() || tokens[fields - 1].empty())
+        {
+            cerr << "Error in line: " << line << " - Incorrect number of fields" << endl;
+            continue;
+        }
+
+        try
+        {
+            NutrientsInfo nutrient;
+            removeQuotes(tokens[0]);
+            trimWhitespace(tokens[0]); // Trim leading and trailing whitespaces
+
+            nutrient.food = tokens[0];
+
+            removeQuotes(tokens[1]);
+            nutrient.measure = tokens[1];
+
+            nutrient.grams = cleanAndConvertToDouble(tokens[2]);
+            nutrient.calories = cleanAndConvertToDouble(tokens[3]);
+            nutrient.protein = cleanAndConvertToDouble(tokens[4]);
+            nutrient.fat = cleanAndConvertToDouble(tokens[5]);
+
+            // Handle cases where Sat.Fat is 't' or 'a' or null
+            nutrient.satFat = cleanAndConvertToDouble(tokens[6]);
+
+            // Handle cases where Fiber and Carbs are 't' or 'a' or null
+            nutrient.fiber = cleanAndConvertToDouble(tokens[7]);
+            nutrient.carbs = cleanAndConvertToDouble(tokens[8]);
+
+            removeQuotes(tokens[9]);
+            trimWhitespace(tokens[9]); // Trim leading and trailing whitespaces
+            nutrient.category = tokens[9];
+
+            replaceCategory(nutrientsArray, n);
+            preprocessData(nutrientsArray, n);
+            addNutrientToArray(nutrientsArray, nutrient, n, maxSize);
+            replaceCharacterInCategory(nutrientsList);
+            replaceNegativeProteinWithZero(nutrientsList);
+            nutrientsList.push_back(nutrient);
+        }
+        catch (const exception& e)
+        {
+            cerr << "Error parsing line: " << line << endl;
+            cerr << "Exception details: " << e.what() << endl;
+            // Skip the line if there is an error in parsing
+            continue;
+        }
+    }
+
+    file.close();
+
+    while (true) {
         cout << "Choose data storage method:\n1. Array\n2. Linked List\n3. Exit\n";
         cin >> menuChoice;
 
@@ -719,51 +1119,135 @@ int main() {
         columnSortMenu();
         cin >> columnChoice;
 
-
-        if (sortChoice == 4) {
-            continue; // Return to the main menu
-        }
-
-        // Implement your sorting and data handling logic here
         if (menuChoice == 1) {
-            // Handle array
-            NutrientInfo data[MAX_SIZE];
-            int dataSize = 0;
-            readCsvToArray(filename, data, dataSize);
-
             auto start = chrono::high_resolution_clock::now();
 
+            if (sortChoice == 1) {
+                switch (columnChoice) {
+                case 1:
+                    radixSortString(nutrientsArray, n, &NutrientsInfo::food);
+                    break;
+                case 2:
 
-            if (sortChoice == 1) {                
-                radixSortForArray(data, dataSize); // Modify this function to sort NutrientInfo array
-                cout << "Radix Sorting Algorithm" << endl;
+                    radixSortByMeasure(nutrientsArray, n);
+                    break;
+                case 3:
+                    radixSortNumbers(nutrientsArray, n, [](const NutrientsInfo& item) {return item.grams; });
+                    break;
+                case 4:
+                    radixSortNumbers(nutrientsArray, n, [](const NutrientsInfo& item) {return item.calories; });
+                    break;
+                case 5:
+                    radixSortNumbers(nutrientsArray, n, [](const NutrientsInfo& item) {return item.protein; });
+                    break;
+                case 6:
+                    radixSortNumbers(nutrientsArray, n, [](const NutrientsInfo& item) {return item.fat; });
+                    break;
+                case 7:
+                    radixSortNumbers(nutrientsArray, n, [](const NutrientsInfo& item) {return item.satFat; });
+                    break;
+                case 8:
+                    radixSortNumbers(nutrientsArray, n, [](const NutrientsInfo& item) {return item.fiber; });
+                    break;
+                case 9:
+                    radixSortNumbers(nutrientsArray, n, [](const NutrientsInfo& item) {return item.carbs; });
+                    break;
+                case 10:
+                    radixSortString(nutrientsArray, n, &NutrientsInfo::category);
+                    break;
+                }
             }
 
-            else if (sortChoice == 2) {
+
+            if (sortChoice == 2) {
                 mergeSortArray(data, 0, dataSize - 1);  // Modify this function to sort NutrientInfo array
                 cout << "Merge Sorting Algorithm" << endl;
             }
 
-            else if (sortChoice == 3) {
+            if (sortChoice == 3) {
                 bubbleSortArrayByColumn(data, dataSize, columnChoice); // Add this line for Bubble Sort
                 cout << "Bubble Sorting Algorithm" << endl;
             }
+
             auto end = chrono::high_resolution_clock::now();
             chrono::duration<double, milli> elapsed = end - start;
 
-            printArray(data, dataSize);
-            
             cout << "Sorting time: " << elapsed.count() << " ms" << endl;
         }
+
         else if (menuChoice == 2) {
-            // Handle linked list
             Node* head = nullptr;
             readCsvToLinkedList(filename, head);
             auto start = chrono::high_resolution_clock::now();
 
-            if (sortChoice == 1 && (columnChoice == 1 || columnChoice == 2 || columnChoice == 10)) {
-                sortLinkedListByString(head, columnChoice);  // Function to sort linked list of strings
-                cout << "Radix Sorting Algorithm" << endl;
+            if (sortChoice == 1) {
+                int maxDigit;
+                switch (columnChoice) {
+                case 1:
+                    radixSortLinkedListStrings(nutrientsList, [](const NutrientsInfo& item) {
+                        return item.food;
+                        });
+                    break;
+                case 2:
+                    radixSortLinkedListStrings(nutrientsList, [](const NutrientsInfo& item) {
+                        return item.measure;
+                        });
+                    break;
+                case 3:
+                    maxDigit = getMaxValueLinked(nutrientsList, [](const NutrientsInfo& item) {
+                        return item.grams; });
+                    radixSortLinkedList(nutrientsList, [&](const NutrientsInfo& item, int exp) {
+                        return getDigit(item.grams, exp);
+                        }, maxDigit);
+                    break;
+                case 4:
+                    maxDigit = getMaxValueLinked(nutrientsList, [](const NutrientsInfo& item) {
+                        return item.calories; });
+                    radixSortLinkedList(nutrientsList, [&](const NutrientsInfo& item, int exp) {
+                        return getDigit(item.calories, exp);
+                        }, maxDigit);
+                    break;
+                case 5:
+                    maxDigit = getMaxValueLinked(nutrientsList, [](const NutrientsInfo& item) {
+                        return item.protein; });
+                    radixSortLinkedList(nutrientsList, [&](const NutrientsInfo& item, int exp) {
+                        return getDigit(item.protein, exp);
+                        }, maxDigit);
+                    break;
+                case 6:
+                    maxDigit = getMaxValueLinked(nutrientsList, [](const NutrientsInfo& item) {
+                        return item.fat; });
+                    radixSortLinkedList(nutrientsList, [&](const NutrientsInfo& item, int exp) {
+                        return getDigit(item.fat, exp);
+                        }, maxDigit);
+                    break;
+                case 7:
+                    maxDigit = getMaxValueLinked(nutrientsList, [](const NutrientsInfo& item) {
+                        return item.satFat; });
+                    radixSortLinkedList(nutrientsList, [&](const NutrientsInfo& item, int exp) {
+                        return getDigit(item.satFat, exp);
+                        }, maxDigit);
+                    break;
+                case 8:
+                    maxDigit = getMaxValueLinked(nutrientsList, [](const NutrientsInfo& item) {
+                        return item.fiber; });
+                    radixSortLinkedList(nutrientsList, [&](const NutrientsInfo& item, int exp) {
+                        return getDigit(item.fiber, exp);
+                        }, maxDigit);
+                    break;
+                case 9:
+                    maxDigit = getMaxValueLinked(nutrientsList, [](const NutrientsInfo& item) {
+                        return item.carbs; });
+                    radixSortLinkedList(nutrientsList, [&](const NutrientsInfo& item, int exp) {
+                        return getDigit(item.carbs, exp);
+                        }, maxDigit);
+                    break;
+                case 10:
+                    radixSortLinkedListStrings(nutrientsList, [](const NutrientsInfo& item) {
+                        return item.category;
+                        });
+                    break;
+                }
             }
 
             else if (sortChoice == 2) {
@@ -779,28 +1263,17 @@ int main() {
                 int dataSize = getListSize(head);
                 int scale = 100;
                 ScaledNode* scaledData = extractData(head, dataSize, scale, columnChoice);
-                radixSortForLinkedList(scaledData, dataSize); // Sort CalorieNode array
+
                 reconstructList(head, scaledData, dataSize); // Reconstruct the linked list
                 delete[] scaledData; // Don't forget to free the memory
             }
-
             auto end = chrono::high_resolution_clock::now();
             chrono::duration<double, milli> elapsed = end - start;
 
-            printLinkedList(head);
+
             cout << "Sorting time: " << elapsed.count() << " ms" << endl;
         }
-        
-        // Implement a way to pause and display results before returning to the menu
-        cout << "Press Enter to return to the menu...";
-        cin.ignore(numeric_limits<streamsize>::max(), '\n');
-        cin.get();
-                
     }
 
-    // Clean up resources if necessary
-
     return 0;
-    
-}
-
+};
